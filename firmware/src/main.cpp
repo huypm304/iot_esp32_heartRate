@@ -1,23 +1,36 @@
 #include <Arduino.h>
-#include <Arduino.h>
 #include <WiFiClientSecure.h>
 #include <MQTTClient.h>
 #include <ArduinoJson.h>
-#include "secrets.h" // File chứa SSID, Pass và 3 cái Key chứng chỉ
+//#include "secrets.h" 
+#include <Wire.h>
+#include "MAX30105.h" 
+#include "heartRate.h"
 
-// put function declarations here:
-int myFunction(int, int);
+#define AWS_IOT_PUBLISH_TOPIC   "health/monitor"
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+WiFiClientSecure net = WiFiClientSecure();
+MQTTClient client = MQTTClient(256);
+
+
+void setup(){
+
+}
+
+void readSensorData() {
+  //  Function to read data from MAX30102 sensor
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  client.loop();//MQTT connect loop
 }
 
 // put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+void publishMessage(){
+
+}
+
+void connectWiFi(){
+
 }
