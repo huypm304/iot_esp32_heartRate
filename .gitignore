@@ -17,4 +17,4 @@
 Thumbs.db
 
 firmware/src/secrets.h
-infrastructure/terraform.tfvars
+terraform/terraform.tfvars

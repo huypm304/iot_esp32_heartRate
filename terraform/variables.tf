@@ -7,12 +7,10 @@ variable "project_name" {
 }
 
 variable "wifi_ssid" {
-  description = "HCMUS-Phonghoc"
   type        = string
 }
 
 variable "wifi_password" {
-  description = "khtn@phonghoc"
   type        = string
   sensitive   = true
 }
