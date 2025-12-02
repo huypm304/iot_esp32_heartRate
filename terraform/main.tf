@@ -73,35 +73,5 @@ const char WIFI_PASSWORD[] = "${var.wifi_password}";
 // MQTT Config
 const char MQTT_HOST[] = "${data.aws_iot_endpoint.endpoint.endpoint_address}";
 const char MQTT_TOPIC[] = "health/monitor";
-
-// Certificates (Auto-generated)
-const char AWS_CERT_CA[] = R"KEY(
------BEGIN CERTIFICATE-----
-MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
-ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6
-b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL
-MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv
-b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj
-ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM
-9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw
-IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6
-VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L
-93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm
-jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC
-AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA
-A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkqUuMSsx7v068+sqy
-N/A8QL6Y2yQnikloffl3hA1/yQUuH+I0vpIV6UfjgdwoPa5Lz8TrqY=
------END CERTIFICATE-----
-)KEY";
-
-const char AWS_CERT_CRT[] = R"KEY(
-${aws_iot_certificate.cert.certificate_pem}
-)KEY";
-
-const char AWS_CERT_PRIVATE[] = R"KEY(
-${aws_iot_certificate.cert.private_key}
-)KEY";
-
-#endif
 EOF
 }
