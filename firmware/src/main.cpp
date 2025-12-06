@@ -41,7 +41,7 @@ int32_t heartRate;
 int8_t validHeartRate;
 
 // Biến làm mượt (EMA - Exponential Moving Average)
-#define EMA_ALPHA 0.25  // Smoothing factor (0.0 - 1.0): lower = smoother, higher = more responsive
+#define EMA_ALPHA 0.25 // Smoothing factor (0.0 - 1.0): lower = smoother, higher = more responsive
 float emaHR = 0.0;
 float emaSPO2 = 0.0;
 bool emaInitialized = false;
@@ -77,64 +77,75 @@ void updateEMA(float &ema, int32_t newValue, bool isValid, int32_t minValue, int
 
 int32_t getEMA(float ema)
 {
-  return emaInitialized ? (int32_t)(ema + 0.5) : 0;  // Round to nearest integer
+  return emaInitialized ? (int32_t)(ema + 0.5) : 0; // Round to nearest integer
 }
 
 // ==========================================
 // CÁC HÀM KẾT NỐI MẠNG
 // ==========================================
-// void connectWiFi() {
-//   WiFi.mode(WIFI_STA);
-//   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-//   Serial.print("Connecting WiFi");
-//   while (WiFi.status() != WL_CONNECTED) {
-//     delay(500); Serial.print(".");
-//   }
-//   Serial.println("\nWiFi Connected!");
-// }
+void connectWiFi()
+{
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting WiFi");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi Connected!");
+}
 
-// void connectAWS() {
-//   if (WiFi.status() != WL_CONNECTED) connectWiFi();
-//   configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Đồng bộ giờ quốc tế
-//   Serial.print("Dang cap nhat gio");
-//   while (time(nullptr) < 1000000000l) {
-//     delay(1000);
-//     Serial.print(".");
-//   }
-//   Serial.println("\nDa cap nhat gio xong!");
-//   // ----------------------------------
+void connectAWS()
+{
+  if (WiFi.status() != WL_CONNECTED)
+    connectWiFi();
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Đồng bộ giờ quốc tế
+  Serial.print("Dang cap nhat gio");
+  while (time(nullptr) < 1000000000l)
+  {
+    delay(1000);
+    Serial.print(".");
+  }
+  Serial.println("\nDa cap nhat gio xong!");
+  // ----------------------------------
 
-//   net.setCACert(AWS_CERT_CA);
-//   net.setCertificate(AWS_CERT_CRT);
-//   net.setPrivateKey(AWS_CERT_PRIVATE);
+  net.setCACert(AWS_CERT_CA);
+  net.setCertificate(AWS_CERT_CRT);
+  net.setPrivateKey(AWS_CERT_PRIVATE);
 
-//   client.begin(MQTT_HOST, 8883, net);
+  client.begin(MQTT_HOST, 8883, net);
 
-//   Serial.print("Connecting AWS");
-//   while (!client.connect("ESP32_Health_Device")) {
-//     Serial.print("."); delay(100);
-//   }
-//   if(!client.connected()){
-//     Serial.println("Timeout!"); return;
-//   }
-//   Serial.println("\nAWS Connected!");
-// }
+  Serial.print("Connecting AWS");
+  while (!client.connect("ESP32_Health_Device"))
+  {
+    Serial.print(".");
+    delay(100);
+  }
+  if (!client.connected())
+  {
+    Serial.println("Timeout!");
+    return;
+  }
+  Serial.println("\nAWS Connected!");
+}
 
-// void publishMessage(int hr, int sp) {
-//   StaticJsonDocument<200> doc;
-//   doc["device_id"] = "ESP32_01";
-//   doc["heart_rate"] = hr;
-//   doc["spo2"] = sp;
-//   doc["timestamp"] = millis();
+void publishMessage(int hr, int sp)
+{
+  StaticJsonDocument<200> doc;
+  doc["device_id"] = "ESP32_01";
+  doc["heart_rate"] = hr;
+  doc["spo2"] = sp;
+  doc["timestamp"] = millis();
 
-//   char jsonBuffer[512];
-//   serializeJson(doc, jsonBuffer);
+  char jsonBuffer[512];
+  serializeJson(doc, jsonBuffer);
 
-//   // Gửi lên Topic (Lấy từ secrets.h)
-//   client.publish(MQTT_TOPIC, jsonBuffer);
-//   Serial.print(">> Sent to AWS: ");
-//   Serial.println(jsonBuffer);
-// }
+  // Gửi lên Topic (Lấy từ secrets.h)
+  client.publish(MQTT_TOPIC, jsonBuffer);
+  Serial.print(">> Sent to AWS: ");
+  Serial.println(jsonBuffer);
+}
 
 // ==========================================
 // HÀM CẬP NHẬT OLED DISPLAY
@@ -242,7 +253,7 @@ void setup()
   display.setCursor(0, 0);
   display.println("Connecting WiFi...");
   display.display();
-  // connectAWS();
+  connectAWS();
 
   display.clearDisplay();
   display.setCursor(0, 0);
@@ -257,7 +268,7 @@ void loop()
 {
   // Giữ kết nối mạng
   client.loop();
-  // if (!client.connected()) connectAWS();
+  if (!client.connected()) connectAWS();
 
   // --- BƯỚC 1: Thu thập 100 mẫu đầu tiên (Mất 1 giây) ---
   for (byte i = 0; i < bufferLength; i++)
@@ -313,8 +324,8 @@ void loop()
     else
     {
       // Có tay -> Cập nhật EMA
-      updateEMA(emaHR, heartRate, validHeartRate, 40, 180);      // HR: 40-180 bpm
-      updateEMA(emaSPO2, spo2, validSPO2, 70, 100);              // SpO2: 70-100%
+      updateEMA(emaHR, heartRate, validHeartRate, 40, 180); // HR: 40-180 bpm
+      updateEMA(emaSPO2, spo2, validSPO2, 70, 100);         // SpO2: 70-100%
 
       int finalHR = getEMA(emaHR);
       int finalSpO2 = getEMA(emaSPO2);
@@ -330,7 +341,7 @@ void loop()
         updateDisplay(finalHR, finalSpO2, true);
 
         // Gửi lên AWS (Chỉ gửi khi số liệu ổn định)
-        // publishMessage(finalHR, finalSpO2);
+        publishMessage(finalHR, finalSpO2);
       }
       else
       {
@@ -341,6 +352,6 @@ void loop()
 
     // Xử lý mạng trong vòng lặp con này luôn
     client.loop();
-    // if (!client.connected()) connectAWS();
+    if (!client.connected()) connectAWS();
   }
 }
