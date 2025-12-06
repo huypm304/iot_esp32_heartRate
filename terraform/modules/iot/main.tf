@@ -1,10 +1,48 @@
+resource "aws_iot_thing" "esp32" {
+  name = "${var.project_name}_ESP32"
+}
 
-# 1. Create Role for IoT Core
+resource "aws_iot_certificate" "cert" {
+  active = true
+}
+
+resource "aws_iot_thing_principal_attachment" "att_thing" {
+  principal = aws_iot_certificate.cert.arn
+  thing     = aws_iot_thing.esp32.name
+}
+
+resource "aws_iot_policy" "pubsub" {
+  name = "${var.project_name}_Policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = [
+        "iot:Connect",
+        "iot:Publish",
+        "iot:Subscribe",
+        "iot:Receive"
+      ]
+      Effect   = "Allow"
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iot_policy_attachment" "att_policy" {
+  policy = aws_iot_policy.pubsub.name
+  target = aws_iot_certificate.cert.arn
+}
+
+data "aws_iot_endpoint" "endpoint" {
+  endpoint_type = "iot:Data-ATS"
+}
+
 resource "aws_iam_role" "iot_role" {
   name = "${var.project_name}_IoT_Role"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
@@ -13,13 +51,12 @@ resource "aws_iam_role" "iot_role" {
   })
 }
 
-# 2. Attach Permissions to that Role
-resource "aws_iam_role_policy" "iot_policy" {
+resource "aws_iam_role_policy" "iot_access" {
   name = "${var.project_name}_Access_Policy"
   role = aws_iam_role.iot_role.id
 
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
         Effect = "Allow",
@@ -33,26 +70,23 @@ resource "aws_iam_role_policy" "iot_policy" {
   })
 }
 
-
-
 resource "aws_iot_topic_rule" "rule" {
   name        = "${var.project_name}_Rule"
   description = "Route data to DB and Dashboard"
   enabled     = true
   
-  # IMPORTANT: SQL query to filter data
   sql         = "SELECT * FROM 'health/monitor'"
   sql_version = "2016-03-23"
 
-  # Action 1: Save to DynamoDB
+  # Action 1: Lưu vào DynamoDB
   dynamodbv2 {
-    role_arn = aws_iam_role.iot_role.arn
+    role_arn = aws_iam_role.iot_role.arn # Giờ nó sẽ tìm thấy Role ở trên
     put_item {
-      table_name = aws_dynamodb_table.health_data.name
+      table_name = var.dynamodb_table_name 
     }
   }
 
-  # Action 2: Send Metrics to CloudWatch
+  # Action 2: Đẩy SpO2 lên CloudWatch
   cloudwatch_metric {
     role_arn = aws_iam_role.iot_role.arn
     metric_namespace = var.project_name
@@ -61,6 +95,7 @@ resource "aws_iot_topic_rule" "rule" {
     metric_unit      = "Percent"
   }
   
+  # Action 3: Đẩy HeartRate lên CloudWatch
   cloudwatch_metric {
     role_arn = aws_iam_role.iot_role.arn
     metric_namespace = var.project_name

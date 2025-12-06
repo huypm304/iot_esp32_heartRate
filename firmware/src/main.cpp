@@ -6,9 +6,7 @@
 #include <Wire.h>
 #include "MAX30105.h" 
 #include "spo2_algorithm.h" 
-// ==========================================
-// CẤU HÌNH CẢM BIẾN & THUẬT TOÁN
-// ==========================================
+
 MAX30105 particleSensor;
 
 #define MAX_BRIGHTNESS 255
@@ -30,13 +28,9 @@ int32_t hrHistory[SMOOTHING_WINDOW] = {0};
 int32_t spo2History[SMOOTHING_WINDOW] = {0};
 int historyIndex = 0;
 
-// ==========================================
-// CẤU HÌNH MẠNG (AWS & MQTT)
-// ==========================================
 WiFiClientSecure net = WiFiClientSecure();
 MQTTClient client = MQTTClient(512); // Buffer lớn chút cho JSON
 
-// Hàm làm mượt dữ liệu (Lấy từ code của bạn)
 void addReading(int32_t newHR, bool hrValid, int32_t newSPO2, bool spo2Valid) {
   bool hrReallyValid = hrValid && newHR > 40 && newHR < 180 && newHR != -999;
   bool spo2ReallyValid = spo2Valid && newSPO2 > 70 && newSPO2 <= 100 && newSPO2 != -999;
@@ -58,9 +52,6 @@ int32_t getSmoothedAverage(int32_t history[]) {
   return count > 0 ? sum / count : 0;
 }
 
-// ==========================================
-// CÁC HÀM KẾT NỐI MẠNG
-// ==========================================
 void connectWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -73,25 +64,36 @@ void connectWiFi() {
 
 void connectAWS() {
   if (WiFi.status() != WL_CONNECTED) connectWiFi();
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Đồng bộ giờ quốc tế
+
+  // --- BẮT ĐẦU SỬA: THÊM ĐỒNG BỘ GIỜ ---
+  // Phải có dòng này thì ESP32 mới biết giờ hiện tại
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); 
+
   Serial.print("Dang cap nhat gio");
+  // Chờ đến khi cập nhật giờ thành công (năm > 2001)
   while (time(nullptr) < 1000000000l) {
     delay(1000);
     Serial.print(".");
   }
   Serial.println("\nDa cap nhat gio xong!");
-  // ----------------------------------
+  // --- KẾT THÚC SỬA ---
 
-  net.setCACert(AWS_CERT_CA);
+  // Nạp chứng chỉ (Đảm bảo dùng đúng biến trong secrets.h)
+  net.setCACert(AWS_CERT_CA); 
   net.setCertificate(AWS_CERT_CRT);
   net.setPrivateKey(AWS_CERT_PRIVATE);
 
   client.begin(MQTT_HOST, 8883, net);
 
   Serial.print("Connecting AWS");
-  while (!client.connect("ESP32_Health_Device")) {
-    Serial.print("."); delay(100);
+  
+  // Đổi tên Client ID ngẫu nhiên để tránh bị trùng lặp (nếu đang mở web test)
+  String clientId = "ESP32_Huy_" + String(random(0xffff), HEX);
+  
+  while (!client.connect(clientId.c_str())) { 
+    Serial.print("."); delay(500);
   }
+  
   if(!client.connected()){
     Serial.println("Timeout!"); return;
   }
@@ -114,9 +116,6 @@ void publishMessage(int hr, int sp) {
   Serial.println(jsonBuffer);
 }
 
-// ==========================================
-// SETUP & LOOP
-// ==========================================
 void setup() {
   Serial.begin(115200);
   
@@ -126,15 +125,15 @@ void setup() {
     while (1);
   }
 
-  // Cấu hình tối ưu (Lấy từ code của bạn)
-  byte ledBrightness = 60;
-  byte sampleAverage = 4;
+  byte ledBrightness = 20;
+  byte sampleAverage = 16;
   byte ledMode = 2;
   byte sampleRate = 100;
   int pulseWidth = 411;
-  int adcRange = 4096;
+  int adcRange = 16384;
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
 
+  connectWiFi();
   // 2. Kết nối mạng
   connectAWS();
   
@@ -142,29 +141,36 @@ void setup() {
 }
 
 void loop() {
-  // Giữ kết nối mạng
+  // 1. Maintain Network Connection
   client.loop();
   if (!client.connected()) connectAWS();
 
-  // --- BƯỚC 1: Thu thập 100 mẫu đầu tiên (Mất 1 giây) ---
-  for (byte i = 0; i < bufferLength; i++) {
-    while (particleSensor.available() == false) 
-      particleSensor.check();
+  // 2. Initial Buffer Filling (Only runs once at startup or reset)
+  // We use a static flag to track if buffer is full
+  static bool bufferFilled = false;
 
-    redBuffer[i] = particleSensor.getRed();
-    irBuffer[i] = particleSensor.getIR();
-    particleSensor.nextSample();
-  }
+  if (!bufferFilled) {
+    // Fill the first 100 samples
+    for (byte i = 0; i < bufferLength; i++) {
+      while (particleSensor.available() == false) 
+        particleSensor.check();
 
-  // --- BƯỚC 2: Tính toán & Cập nhật liên tục ---
-  while (1) {
-    // Dịch chuyển 25 mẫu cũ ra ngoài (Cửa sổ trượt)
+      redBuffer[i] = particleSensor.getRed();
+      irBuffer[i] = particleSensor.getIR();
+      particleSensor.nextSample();
+    }
+    bufferFilled = true; // Mark as filled so we don't do this again
+  } 
+  else {
+    // 3. Continuous Processing (Sliding Window)
+    
+    // Shift the last 75 samples to the beginning
     for (byte i = 25; i < 100; i++) {
       redBuffer[i - 25] = redBuffer[i];
       irBuffer[i - 25] = irBuffer[i];
     }
 
-    // Đọc thêm 25 mẫu mới
+    // Read 25 new samples to fill the end
     for (byte i = 75; i < 100; i++) {
       while (particleSensor.available() == false) 
         particleSensor.check();
@@ -174,20 +180,20 @@ void loop() {
       particleSensor.nextSample();
     }
 
-    // Tính toán lại HR & SpO2
+    // Run Algorithm
     maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
 
-    // Kiểm tra có tay không?
+    // Check for finger
     long avgIR = 0;
     for(int i=75; i<100; i++) avgIR += irBuffer[i];
     avgIR /= 25;
 
     if (avgIR < 50000) {
       Serial.println("No finger!");
-      // Reset lịch sử làm mượt
+      // Reset smoothing history
       for(int i=0; i<SMOOTHING_WINDOW; i++) { hrHistory[i]=0; spo2History[i]=0; }
     } else {
-      // Có tay -> Thêm vào lịch sử & Làm mượt
+      // Add reading and smooth
       addReading(heartRate, validHeartRate, spo2, validSPO2);
       
       int finalHR = getSmoothedAverage(hrHistory);
@@ -197,13 +203,23 @@ void loop() {
         Serial.print("HR: "); Serial.print(finalHR);
         Serial.print(" | SpO2: "); Serial.println(finalSpO2);
         
-        // Gửi lên AWS (Chỉ gửi khi số liệu ổn định)
+        // Send to AWS
         publishMessage(finalHR, finalSpO2);
+  //     if (finalHR > 0 && finalSpO2 > 0) {
+    
+  // Serial.println("=== DEBUG ===");
+  // Serial.print("IR: "); Serial.print(avgIR);
+  // Serial.print(" | Red: "); Serial.println(redBuffer[99]);
+  // Serial.print("Raw HR: "); Serial.print(heartRate);
+  // Serial.print(" (Valid: "); Serial.print(validHeartRate);
+  // Serial.print(") | Raw SpO2: "); Serial.print(spo2);
+  // Serial.print(" (Valid: "); Serial.print(validSPO2); Serial.println(")");
+  // Serial.print("=> Final HR: "); Serial.print(finalHR);
+  // Serial.print(" | Final SpO2: "); Serial.println(finalSpO2);
+  // Serial.println("=============");
+
+  // publishMessage(finalHR, finalSpO2);
       }
     }
-    
-    // Xử lý mạng trong vòng lặp con này luôn
-    client.loop();
-    if (!client.connected()) connectAWS();
   }
 }
