@@ -1,4 +1,3 @@
-# DYNAMODB TABLE
 resource "aws_dynamodb_table" "health_data" {
   name           = "${var.project_name}_Logs"
   billing_mode   = "PAY_PER_REQUEST"
@@ -16,7 +15,6 @@ resource "aws_dynamodb_table" "health_data" {
   }
 
   tags = {
-    Environment = "Production"
-    Project     = var.project_name
+    Project = var.project_name
   }
 }
