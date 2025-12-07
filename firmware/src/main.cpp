@@ -4,7 +4,6 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 #include <Wire.h>
-<<<<<<< HEAD
 #include "MAX30105.h"
 #include "spo2_algorithm.h"
 #include <Adafruit_GFX.h>
@@ -12,11 +11,6 @@
 // ==========================================
 // CẤU HÌNH CẢM BIẾN & THUẬT TOÁN
 // ==========================================
-=======
-#include "MAX30105.h" 
-#include "spo2_algorithm.h" 
-
->>>>>>> aws
 MAX30105 particleSensor;
 
 #define MAX_BRIGHTNESS 255
@@ -55,18 +49,12 @@ bool emaInitialized = false;
 WiFiClientSecure net = WiFiClientSecure();
 MQTTClient client = MQTTClient(512); // Buffer lớn chút cho JSON
 
-<<<<<<< HEAD
 // Hàm cập nhật EMA (Exponential Moving Average)
 // Formula: EMA_new = alpha × current_value + (1 - alpha) × EMA_previous
 void updateEMA(float &ema, int32_t newValue, bool isValid, int32_t minValue, int32_t maxValue)
 {
   // Validate the new value
   bool reallyValid = isValid && newValue >= minValue && newValue <= maxValue && newValue != -999;
-=======
-void addReading(int32_t newHR, bool hrValid, int32_t newSPO2, bool spo2Valid) {
-  bool hrReallyValid = hrValid && newHR > 40 && newHR < 180 && newHR != -999;
-  bool spo2ReallyValid = spo2Valid && newSPO2 > 70 && newSPO2 <= 100 && newSPO2 != -999;
->>>>>>> aws
 
   if (reallyValid)
   {
@@ -89,15 +77,11 @@ int32_t getEMA(float ema)
   return emaInitialized ? (int32_t)(ema + 0.5) : 0; // Round to nearest integer
 }
 
-<<<<<<< HEAD
 // ==========================================
 // CÁC HÀM KẾT NỐI MẠNG
 // ==========================================
 void connectWiFi()
 {
-=======
-void connectWiFi() {
->>>>>>> aws
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting WiFi");
@@ -109,16 +93,6 @@ void connectWiFi() {
   Serial.println("\nWiFi Connected!");
 }
 
-<<<<<<< HEAD
-void connectAWS()
-{
-  if (WiFi.status() != WL_CONNECTED)
-    connectWiFi();
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // Đồng bộ giờ quốc tế
-  Serial.print("Dang cap nhat gio");
-  while (time(nullptr) < 1000000000l)
-  {
-=======
 void connectAWS() {
   if (WiFi.status() != WL_CONNECTED) connectWiFi();
 
@@ -129,7 +103,6 @@ void connectAWS() {
   Serial.print("Dang cap nhat gio");
   // Chờ đến khi cập nhật giờ thành công (năm > 2001)
   while (time(nullptr) < 1000000000l) {
->>>>>>> aws
     delay(1000);
     Serial.print(".");
   }
@@ -144,17 +117,6 @@ void connectAWS() {
   client.begin(MQTT_HOST, 8883, net);
 
   Serial.print("Connecting AWS");
-<<<<<<< HEAD
-  while (!client.connect("ESP32_Health_Device"))
-  {
-    Serial.print(".");
-    delay(100);
-  }
-  if (!client.connected())
-  {
-    Serial.println("Timeout!");
-    return;
-=======
   
   // Đổi tên Client ID ngẫu nhiên để tránh bị trùng lặp (nếu đang mở web test)
   String clientId = "ESP32_Huy_" + String(random(0xffff), HEX);
@@ -165,7 +127,6 @@ void connectAWS() {
   
   if(!client.connected()){
     Serial.println("Timeout!"); return;
->>>>>>> aws
   }
   Serial.println("\nAWS Connected!");
 }
@@ -187,7 +148,6 @@ void publishMessage(int hr, int sp)
   Serial.println(jsonBuffer);
 }
 
-<<<<<<< HEAD
 // ==========================================
 // HÀM CẬP NHẬT OLED DISPLAY
 // ==========================================
@@ -251,9 +211,6 @@ void updateDisplay(int hr, int spo2, bool fingerDetected)
 // ==========================================
 void setup()
 {
-=======
-void setup() {
->>>>>>> aws
   Serial.begin(115200);
 
   // 1. Khởi động OLED
@@ -284,23 +241,18 @@ void setup() {
   }
 
   byte ledBrightness = 20;
-  byte sampleAverage = 16;
+  byte sampleAverage = 4;
   byte ledMode = 2;
   byte sampleRate = 100;
   int pulseWidth = 411;
-  int adcRange = 16384;
+  int adcRange = 4096;
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
 
-<<<<<<< HEAD
   // 3. Kết nối mạng
   display.clearDisplay();
   display.setCursor(0, 0);
   display.println("Connecting WiFi...");
   display.display();
-=======
-  connectWiFi();
-  // 2. Kết nối mạng
->>>>>>> aws
   connectAWS();
 
   display.clearDisplay();
@@ -312,19 +264,6 @@ void setup() {
   Serial.println("System Ready! Place finger on sensor.");
 }
 
-<<<<<<< HEAD
-void loop()
-{
-  // Giữ kết nối mạng
-  client.loop();
-  if (!client.connected()) connectAWS();
-
-  // --- BƯỚC 1: Thu thập 100 mẫu đầu tiên (Mất 1 giây) ---
-  for (byte i = 0; i < bufferLength; i++)
-  {
-    while (particleSensor.available() == false)
-      particleSensor.check();
-=======
 void loop() {
   // 1. Maintain Network Connection
   client.loop();
@@ -333,7 +272,6 @@ void loop() {
   // 2. Initial Buffer Filling (Only runs once at startup or reset)
   // We use a static flag to track if buffer is full
   static bool bufferFilled = false;
->>>>>>> aws
 
   if (!bufferFilled) {
     // Fill the first 100 samples
@@ -341,14 +279,6 @@ void loop() {
       while (particleSensor.available() == false) 
         particleSensor.check();
 
-<<<<<<< HEAD
-  // --- BƯỚC 2: Tính toán & Cập nhật liên tục ---
-  while (1)
-  {
-    // Dịch chuyển 25 mẫu cũ ra ngoài (Cửa sổ trượt)
-    for (byte i = 25; i < 100; i++)
-    {
-=======
       redBuffer[i] = particleSensor.getRed();
       irBuffer[i] = particleSensor.getIR();
       particleSensor.nextSample();
@@ -360,21 +290,13 @@ void loop() {
     
     // Shift the last 75 samples to the beginning
     for (byte i = 25; i < 100; i++) {
->>>>>>> aws
       redBuffer[i - 25] = redBuffer[i];
       irBuffer[i - 25] = irBuffer[i];
     }
 
-<<<<<<< HEAD
-    // Đọc thêm 25 mẫu mới
-    for (byte i = 75; i < 100; i++)
-    {
-      while (particleSensor.available() == false)
-=======
     // Read 25 new samples to fill the end
     for (byte i = 75; i < 100; i++) {
       while (particleSensor.available() == false) 
->>>>>>> aws
         particleSensor.check();
 
       redBuffer[i] = particleSensor.getRed();
@@ -394,7 +316,6 @@ void loop() {
     if (avgIR < 50000)
     {
       Serial.println("No finger!");
-<<<<<<< HEAD
       // Reset EMA
       emaHR = 0.0;
       emaSPO2 = 0.0;
@@ -413,46 +334,22 @@ void loop() {
 
       if (finalHR > 0 && finalSpO2 > 0)
       {
+          Serial.print("IR: "); Serial.print(avgIR);
+  Serial.print(" | Red: "); Serial.println(redBuffer[99]);
+  Serial.print("Raw HR: "); Serial.print(heartRate);
+  Serial.print(" (Valid: "); Serial.print(validHeartRate);
+  Serial.print(") | Raw SpO2: "); Serial.print(spo2);
+  Serial.print(" (Valid: "); Serial.print(validSPO2); Serial.println(")");
         Serial.print("HR: ");
         Serial.print(finalHR);
         Serial.print(" | SpO2: ");
         Serial.println(finalSpO2);
-
         // Cập nhật màn hình với dữ liệu hợp lệ
         updateDisplay(finalHR, finalSpO2, true);
 
         // Gửi lên AWS (Chỉ gửi khi số liệu ổn định)
-=======
-      // Reset smoothing history
-      for(int i=0; i<SMOOTHING_WINDOW; i++) { hrHistory[i]=0; spo2History[i]=0; }
-    } else {
-      // Add reading and smooth
-      addReading(heartRate, validHeartRate, spo2, validSPO2);
-      
-      int finalHR = getSmoothedAverage(hrHistory);
-      int finalSpO2 = getSmoothedAverage(spo2History);
-
-      if (finalHR > 0 && finalSpO2 > 0) {
-        Serial.print("HR: "); Serial.print(finalHR);
-        Serial.print(" | SpO2: "); Serial.println(finalSpO2);
-        
-        // Send to AWS
->>>>>>> aws
         publishMessage(finalHR, finalSpO2);
-  //     if (finalHR > 0 && finalSpO2 > 0) {
-    
-  // Serial.println("=== DEBUG ===");
-  // Serial.print("IR: "); Serial.print(avgIR);
-  // Serial.print(" | Red: "); Serial.println(redBuffer[99]);
-  // Serial.print("Raw HR: "); Serial.print(heartRate);
-  // Serial.print(" (Valid: "); Serial.print(validHeartRate);
-  // Serial.print(") | Raw SpO2: "); Serial.print(spo2);
-  // Serial.print(" (Valid: "); Serial.print(validSPO2); Serial.println(")");
-  // Serial.print("=> Final HR: "); Serial.print(finalHR);
-  // Serial.print(" | Final SpO2: "); Serial.println(finalSpO2);
-  // Serial.println("=============");
-
-  // publishMessage(finalHR, finalSpO2);
+ 
       }
       else
       {
@@ -460,12 +357,9 @@ void loop() {
         updateDisplay(0, 0, true);
       }
     }
-<<<<<<< HEAD
 
     // Xử lý mạng trong vòng lặp con này luôn
     client.loop();
     if (!client.connected()) connectAWS();
-=======
->>>>>>> aws
   }
 }
